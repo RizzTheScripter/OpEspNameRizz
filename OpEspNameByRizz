@@ -1,0 +1,148 @@
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local runService = game:GetService("RunService")
+local tweenService = game:GetService("TweenService")
+
+local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+screenGui.Name = "UsernameDisplayGui"
+screenGui.ResetOnSpawn = false
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 200, 0, 100)
+mainFrame.Position = UDim2.new(0, 10, 0, 10)
+mainFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = screenGui
+
+local introLabel = Instance.new("TextLabel")
+introLabel.Text = "Made By: RizzTheScripter"
+introLabel.Size = UDim2.new(1, 0, 0, 20)
+introLabel.Position = UDim2.new(0, 0, 0, 0)
+introLabel.BackgroundTransparency = 1
+introLabel.TextColor3 = Color3.new(1, 1, 1)
+introLabel.Font = Enum.Font.SourceSansBold
+introLabel.TextSize = 14
+introLabel.Parent = mainFrame
+
+local toggleButton = Instance.new("TextButton")
+toggleButton.Text = "ON"
+toggleButton.Size = UDim2.new(0, 60, 0, 30)
+toggleButton.Position = UDim2.new(0, 10, 0, 30)
+toggleButton.BackgroundColor3 = Color3.new(0, 0, 0)
+toggleButton.TextColor3 = Color3.new(1, 1, 1)
+toggleButton.Font = Enum.Font.SourceSansBold
+toggleButton.TextSize = 14
+toggleButton.Parent = mainFrame
+
+local miniButton = Instance.new("TextButton")
+miniButton.Text = "X"
+miniButton.Size = UDim2.new(0, 30, 0, 30)
+miniButton.Position = UDim2.new(1, -35, 0, 5)
+miniButton.BackgroundColor3 = Color3.new(0, 0, 0)
+miniButton.TextColor3 = Color3.new(1, 1, 1)
+miniButton.Font = Enum.Font.SourceSansBold
+miniButton.TextSize = 18
+miniButton.Parent = mainFrame
+
+local madeByLabel = Instance.new("TextLabel")
+madeByLabel.Text = "MadeByRizz"
+madeByLabel.Size = UDim2.new(1, 0, 0, 20)
+madeByLabel.Position = UDim2.new(0, 0, 1, -20)
+madeByLabel.BackgroundTransparency = 1
+madeByLabel.TextColor3 = Color3.new(1, 1, 1)
+madeByLabel.Font = Enum.Font.SourceSansItalic
+madeByLabel.TextSize = 12
+madeByLabel.Parent = mainFrame
+
+local usernamesVisible = true
+local minimized = false
+local billboardGuiCache = {}
+
+-- Animasi Fade
+local function fadeTextLabel(label, targetTransparency)
+	local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	local goal = {TextTransparency = targetTransparency}
+	local tween = tweenService:Create(label, tweenInfo, goal)
+	tween:Play()
+end
+
+-- Toggle Button
+toggleButton.MouseButton1Click:Connect(function()
+	usernamesVisible = not usernamesVisible
+	toggleButton.Text = usernamesVisible and "ON" or "OFF"
+
+	for _, gui in pairs(billboardGuiCache) do
+		local label = gui:FindFirstChildOfClass("TextLabel")
+		if label then
+			fadeTextLabel(label, usernamesVisible and 0 or 1)
+		end
+	end
+end)
+
+-- Minimize/Maximize Button
+miniButton.MouseButton1Click:Connect(function()
+	minimized = not minimized
+	mainFrame:TweenSize(
+		minimized and UDim2.new(0, 200, 0, 40) or UDim2.new(0, 200, 0, 100),
+		Enum.EasingDirection.Out,
+		Enum.EasingStyle.Quad,
+		0.25,
+		true
+	)
+	miniButton.Text = minimized and "+" or "X"
+	toggleButton.Visible = not minimized
+	madeByLabel.Visible = not minimized
+end)
+
+-- Fungsi Buat Billboard Username
+local function addBillboard(targetPlayer)
+	if targetPlayer == player or billboardGuiCache[targetPlayer] then return end
+
+	local char = targetPlayer.Character or targetPlayer.CharacterAdded:Wait()
+	local head = char:WaitForChild("Head")
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "UsernameBillboard"
+	billboard.Adornee = head
+	billboard.Size = UDim2.new(0, 200, 0, 50)
+	billboard.StudsOffset = Vector3.new(0, 2, 0)
+	billboard.AlwaysOnTop = true
+	billboard.SizeOffset = Vector2.new(0, 0)
+	billboard.MaxDistance = 500
+	billboard.Parent = head
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, 0, 1, 0)
+	label.BackgroundTransparency = 1
+	label.TextTransparency = usernamesVisible and 0 or 1
+	label.Text = targetPlayer.Name
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.Font = Enum.Font.SourceSansBold
+	label.TextScaled = true
+	label.Parent = billboard
+
+	billboardGuiCache[targetPlayer] = billboard
+end
+
+-- Tambah semua player yg ada
+for _, p in ipairs(Players:GetPlayers()) do
+	addBillboard(p)
+end
+
+-- Jika ada player baru
+Players.PlayerAdded:Connect(function(newPlayer)
+	newPlayer.CharacterAdded:Connect(function()
+		task.wait(1)
+		addBillboard(newPlayer)
+	end)
+end)
+
+-- Hapus kalau player keluar
+Players.PlayerRemoving:Connect(function(left)
+	if billboardGuiCache[left] then
+		billboardGuiCache[left]:Destroy()
+		billboardGuiCache[left] = nil
+	end
+end)
